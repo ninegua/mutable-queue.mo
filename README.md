@@ -20,3 +20,4 @@ make
 ```
 
 [motoko]: https://github.com/dfinity/motoko
+[vessel]: https://github.com/dfinity/vessel
