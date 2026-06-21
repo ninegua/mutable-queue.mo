@@ -15,8 +15,7 @@ If you have installed a [nix] environment, you can run the tests like this:
 
 ```
 nix-shell
-cd test
-make
+make test
 ```
 
 [motoko]: https://github.com/dfinity/motoko
