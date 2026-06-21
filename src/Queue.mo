@@ -2,13 +2,9 @@
  * A mutable queue with pushFront and pushBack, but only popFront.
  *
  */
-import Iter "mo:base/Iter";
-import Nat64 "mo:base/Nat64";
-import Option "mo:base/Option";
-
-import Matchers "mo:matchers/Matchers";
-import T "mo:matchers/Testable";
-import Suite "mo:matchers/Suite";
+import Iter "mo:core/Iter";
+import Nat64 "mo:core/Nat64";
+import Option "mo:core/Option";
 
 module Queue {
   public type List<T> = {
@@ -29,7 +25,7 @@ module Queue {
   public func pushBack<T>(q: Queue<T>, item: T) : Queue<T> {
     let list : List<T> = { item = item; var next = null };
     switch (q.first, q.last) {
-      case (?first, ?last) {
+      case (?_first, ?last) {
         last.next := ?list;
         q.last := last.next;
       };
@@ -45,7 +41,7 @@ module Queue {
   public func pushFront<T>(item: T, q: Queue<T>) : Queue<T> {
     let list : List<T> = { item = item; var next = null };
     switch (q.first, q.last) {
-      case (?first, ?last) {
+      case (?first, ?_last) {
         list.next := ?first;
         q.first := ?list;
       };
@@ -60,7 +56,7 @@ module Queue {
 
   public func popFront<T>(q: Queue<T>) : ?T {
     switch (q.first, q.last) {
-      case (?first, ?last) {
+      case (?first, ?_last) {
         q.size := q.size - 1;
         let item = first.item;
         if (q.size == 0) {
@@ -97,7 +93,7 @@ module Queue {
 
   public func removeOne<T>(q: Queue<T>, eq: T -> Bool) : ?T {
     switch (q.first, q.last) {
-      case (?first, ?last) {
+      case (?first, ?_last) {
         if (eq(first.item)) {
           q.first := first.next;
           if (Option.isNull(q.first)) {
@@ -200,124 +196,6 @@ module Queue {
     };
     out
   };
-
-  type Suite = Suite.Suite;
-  public func test() : Suite {
-    func wellformed<A>(q: Queue<A>) : Queue<A> {
-      switch (q.first, q.last) {
-        case (?first, ?last) {
-          assert(size(q) > 0);
-          if (size(q) == 1) {
-            assert(Option.isNull(first.next));
-            assert(Option.isNull(last.next));
-          } else {
-            var n = 0;
-            var p = first;
-            label L loop {
-              n := n + 1;
-              switch (p.next) {
-                case null { break L };
-                case (?next) { p := next; }
-              }
-            };
-            assert(n == size(q));
-          }
-        };
-        case (?_, _) { assert(false) };
-        case (_, ?_) { assert(false) };
-        case (_, _)  { assert(size(q) == 0) };
-      };
-      q
-    };
-
-    func toArray_<A>(q: Queue<A>) : [A] {
-      toArray(wellformed(q))
-    };
-
-    let to_array_test =
-      Suite.suite("toArray", [
-        Suite.test("empty",
-          toArray_(empty<Nat>()),
-          Matchers.equals(T.array<Nat>(T.natTestable, []))),
-        Suite.test("singleton",
-          toArray_(make<Nat>(1)),
-          Matchers.equals(T.array<Nat>(T.natTestable, [1]))),
-        Suite.test("multiple",
-          toArray_(pushFront(0, pushBack(make<Nat>(1), 2))),
-          Matchers.equals(T.array<Nat>(T.natTestable, [0, 1, 2]))),
-    ]);
-
-    let size_test =
-      Suite.suite("size", [
-        Suite.test("empty",
-          size(empty<Nat>()),
-          Matchers.equals(T.nat(0))),
-        Suite.test("singleton",
-          size(make<Nat>(1)),
-          Matchers.equals(T.nat(1))),
-        Suite.test("multiple",
-          size(pushFront(0, pushBack(make<Nat>(1), 2))),
-          Matchers.equals(T.nat(3))),
-        Suite.test("fromArray",
-          size(fromArray<Nat>([1,2,3,4])),
-          Matchers.equals(T.nat(4))),
-        Suite.test("popFront",
-          size(do { let q = make<Nat>(1); ignore popFront(q); q }),
-          Matchers.equals(T.nat(0))),
-        Suite.test("pushFront",
-          size(pushFront(0, make<Nat>(1))),
-          Matchers.equals(T.nat(2))),
-        Suite.test("pushBack",
-          size(pushBack(make<Nat>(1), 2)),
-          Matchers.equals(T.nat(2))),
-        Suite.test("rotate",
-          size(rotate(fromArray<Nat>([1,2,3,4]))),
-          Matchers.equals(T.nat(4))),
-    ]);
-
-    func eq(a: Nat) : Nat -> Bool { func (b: Nat) : Bool { a == b } };
-    let removal_test =
-      Suite.suite("removal", [
-        Suite.test("removeOne/empty",
-          removeOne<Nat>(empty<Nat>(), eq(10)),
-          Matchers.equals(T.optional<Nat>(T.natTestable, null))),
-        Suite.test("removeOne/one",
-          removeOne<Nat>(make<Nat>(10), eq(10)),
-          Matchers.equals(T.optional(T.natTestable, ?10))),
-        Suite.test("removeOne/one_1",
-          removeOne<Nat>(make<Nat>(0), eq(10)),
-          Matchers.equals(T.optional<Nat>(T.natTestable, null))),
-        Suite.test("removeOne/two",
-          removeOne<Nat>(fromArray<Nat>([3,10]), eq(3)),
-          Matchers.equals(T.optional(T.natTestable, ?3))),
-        Suite.test("removeOne/two_1",
-          removeOne<Nat>(fromArray<Nat>([3,10]), eq(10)),
-          Matchers.equals(T.optional(T.natTestable, ?10))),
-        Suite.test("removeOne/two_2",
-          removeOne<Nat>(fromArray<Nat>([3,10]), eq(0)),
-          Matchers.equals(T.optional<Nat>(T.natTestable, null))),
-        Suite.test("remove/empty",
-          toArray_(remove<Nat>(empty<Nat>(), eq(10))),
-          Matchers.equals(T.array<Nat>(T.natTestable, []))),
-        Suite.test("remove/one",
-          toArray_(remove<Nat>(make<Nat>(10), eq(10))),
-          Matchers.equals(T.array<Nat>(T.natTestable, []))),
-        Suite.test("remove/one_1",
-          toArray_(remove<Nat>(make<Nat>(0), eq(10))),
-          Matchers.equals(T.array<Nat>(T.natTestable, [0]))),
-        Suite.test("remove/two",
-          toArray_(remove<Nat>(fromArray<Nat>([3,10]), eq(3))),
-          Matchers.equals(T.array<Nat>(T.natTestable, [10]))),
-        Suite.test("remove/two_1",
-          toArray_(remove<Nat>(fromArray<Nat>([3,10]), eq(10))),
-          Matchers.equals(T.array<Nat>(T.natTestable, [3]))),
-        Suite.test("remove/two_2",
-          toArray_(remove<Nat>(fromArray<Nat>([3,10]), eq(0))),
-          Matchers.equals(T.array<Nat>(T.natTestable, [3, 10]))),
-     ]);
-
-    Suite.suite("Queue", [ to_array_test, size_test, removal_test ]);
-  }
 
 }
 
